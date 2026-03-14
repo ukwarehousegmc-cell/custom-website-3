@@ -568,23 +568,13 @@
                     <input type="password" id="clientSecret" placeholder="Shopify API Client Secret">
                 </div>
                 <div class="field">
-                    <div class="toggle-row" style="margin-bottom:10px;">
-                        <div>
-                            <div class="toggle-label">🟣 Gemini Image Generation</div>
-                            <div class="toggle-sub">Uses Gemini 2.5 Flash — Free / very cheap</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" id="geminiImages" checked onchange="handleImageToggle('gemini')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
                     <div class="toggle-row">
                         <div>
-                            <div class="toggle-label">🟢 OpenAI Image Generation</div>
-                            <div class="toggle-sub">Uses GPT Image 1.5 — Higher quality, paid</div>
+                            <div class="toggle-label">🟣 Gemini Image Generation</div>
+                            <div class="toggle-sub">Uses Gemini 2.5 Flash — generates product images from reference photos</div>
                         </div>
                         <label class="toggle">
-                            <input type="checkbox" id="openaiImages" onchange="handleImageToggle('openai')">
+                            <input type="checkbox" id="geminiImages" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -767,18 +757,7 @@
             }
         }
 
-        function handleImageToggle(source) {
-            const gemini = document.getElementById('geminiImages');
-            const openai = document.getElementById('openaiImages');
-            if (source === 'gemini' && gemini.checked) {
-                openai.checked = false;
-            } else if (source === 'openai' && openai.checked) {
-                gemini.checked = false;
-            }
-        }
-
         function getImageProvider() {
-            if (document.getElementById('openaiImages').checked) return 'openai';
             if (document.getElementById('geminiImages').checked) return 'gemini';
             return 'none';
         }

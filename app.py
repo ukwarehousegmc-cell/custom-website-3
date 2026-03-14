@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from scraper import scrape_collection, scrape_product_page, scrape_full_site
-from ai_generator import generate_listing, generate_images_for_product, init_openai
+from ai_generator import generate_listing, generate_images_for_product, init_openai, init_gemini
 from shopify_uploader import ShopifyUploader
 
 app = Flask(__name__)
