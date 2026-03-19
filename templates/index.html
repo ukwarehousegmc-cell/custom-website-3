@@ -3,887 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShopLister AI — Automated Product Listing</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #06060a;
-            --bg-card: #0c0c14;
-            --bg-card-hover: #10101a;
-            --bg-input: #08080f;
-            --border: #1a1a2e;
-            --border-hover: #2a2a45;
-            --text: #e4e4ef;
-            --text-dim: #6b6b8d;
-            --text-muted: #44445a;
-            --accent: #6c5ce7;
-            --accent-light: #a29bfe;
-            --accent-glow: rgba(108, 92, 231, 0.15);
-            --success: #00d2a0;
-            --success-bg: rgba(0, 210, 160, 0.08);
-            --error: #ff6b6b;
-            --error-bg: rgba(255, 107, 107, 0.08);
-            --warning: #ffd93d;
-            --info: #74b9ff;
-            --gradient-1: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-            --gradient-2: linear-gradient(135deg, #6c5ce7 0%, #fd79a8 100%);
-            --radius: 16px;
-            --radius-sm: 10px;
-            --radius-xs: 6px;
-            --shadow: 0 4px 24px rgba(0,0,0,0.3);
-            --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Ambient background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(ellipse at 20% 50%, rgba(108, 92, 231, 0.04) 0%, transparent 50%),
-                        radial-gradient(ellipse at 80% 20%, rgba(253, 121, 168, 0.03) 0%, transparent 50%),
-                        radial-gradient(ellipse at 50% 80%, rgba(116, 185, 255, 0.02) 0%, transparent 50%);
-            z-index: -1;
-            animation: ambientShift 20s ease infinite alternate;
-        }
-        @keyframes ambientShift {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-2%, -2%) rotate(3deg); }
-        }
-
-        /* Layout */
-        .app { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-
-        /* Header */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 40px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border);
-        }
-        .header-left { display: flex; align-items: center; gap: 16px; }
-        .logo {
-            width: 48px;
-            height: 48px;
-            background: var(--gradient-1);
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 20px rgba(108, 92, 231, 0.3);
-        }
-        .header h1 {
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: var(--gradient-2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .header .tagline {
-            font-size: 13px;
-            color: var(--text-dim);
-            font-weight: 400;
-            margin-top: 2px;
-        }
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .pill-ai { background: var(--accent-glow); color: var(--accent-light); border: 1px solid rgba(108, 92, 231, 0.2); }
-        .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-        /* Cards */
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 28px;
-            margin-bottom: 24px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.3), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .card:hover::before { opacity: 1; }
-        .card:hover { border-color: var(--border-hover); }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-        }
-        .card-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-            font-weight: 700;
-            color: #fff;
-        }
-        .card-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-        .icon-config { background: rgba(108, 92, 231, 0.1); }
-        .icon-progress { background: rgba(0, 210, 160, 0.1); }
-        .icon-results { background: rgba(116, 185, 255, 0.1); }
-
-        /* Form */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .form-grid .full { grid-column: 1 / -1; }
-
-        .field label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 8px;
-        }
-        .field input {
-            width: 100%;
-            padding: 12px 16px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            color: #fff;
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        .field input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-        .field input::placeholder { color: var(--text-muted); }
-
-        /* Toggle */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 18px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            margin-top: 4px;
-        }
-        .toggle-label { font-size: 13px; color: var(--text); font-weight: 500; }
-        .toggle-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-        .toggle {
-            position: relative;
-            width: 44px;
-            height: 24px;
-        }
-        .toggle input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--border);
-            border-radius: 12px;
-            transition: 0.3s;
-        }
-        .toggle-slider::before {
-            content: '';
-            position: absolute;
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background: #fff;
-            border-radius: 50%;
-            transition: 0.3s;
-        }
-        .toggle input:checked + .toggle-slider { background: var(--accent); }
-        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
-
-        /* Buttons */
-        .btn-row { display: flex; gap: 12px; margin-top: 24px; }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 13px 28px;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.25s;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-primary {
-            background: var(--gradient-1);
-            color: #fff;
-            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.25);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(108, 92, 231, 0.4);
-        }
-        .btn-primary:active { transform: translateY(0); }
-        .btn-primary:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-dim);
-            border: 1px solid var(--border);
-        }
-        .btn-ghost:hover {
-            background: var(--bg-card-hover);
-            color: var(--text);
-            border-color: var(--border-hover);
-        }
-        .btn-stop {
-            padding: 8px 18px;
-            font-size: 12px;
-            background: var(--error-bg);
-            color: var(--error);
-            border: 1px solid rgba(255, 107, 107, 0.2);
-        }
-        .btn-stop:hover {
-            background: rgba(255, 107, 107, 0.15);
-            border-color: rgba(255, 107, 107, 0.4);
-        }
-
-        /* Preview */
-        .preview-box {
-            margin-top: 16px;
-            padding: 16px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            display: none;
-        }
-        .preview-box.active { display: block; }
-        .preview-count {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--success);
-            margin-bottom: 10px;
-        }
-        .preview-list { max-height: 200px; overflow-y: auto; }
-        .preview-list a {
-            display: block;
-            padding: 6px 0;
-            color: var(--accent-light);
-            text-decoration: none;
-            font-size: 12px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: color 0.2s;
-        }
-        .preview-list a:hover { color: #fff; }
-
-        /* Progress Section */
-        .progress-section { display: none; }
-        .progress-section.active { display: block; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        .stat-card {
-            padding: 20px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            text-align: center;
-        }
-        .stat-value {
-            font-size: 36px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            line-height: 1;
-        }
-        .stat-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 8px;
-        }
-        .stat-total .stat-value { color: #fff; }
-        .stat-done .stat-value { color: var(--success); }
-        .stat-failed .stat-value { color: var(--error); }
-
-        /* Progress Bar */
-        .progress-wrap {
-            position: relative;
-            height: 6px;
-            background: var(--border);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 24px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--gradient-1);
-            border-radius: 3px;
-            transition: width 0.4s ease;
-            width: 0%;
-            position: relative;
-        }
-        .progress-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            animation: shimmer 2s infinite;
-        }
-        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-
-        .progress-pct {
-            text-align: right;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent-light);
-            margin-bottom: 8px;
-        }
-
-        /* Status Badge */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .badge-pending { background: rgba(68, 68, 90, 0.3); color: var(--text-dim); }
-        .badge-scraping { background: rgba(116, 185, 255, 0.1); color: var(--info); }
-        .badge-processing { background: var(--success-bg); color: var(--success); }
-        .badge-completed { background: var(--success-bg); color: var(--success); }
-        .badge-error { background: var(--error-bg); color: var(--error); }
-        .badge-stopped { background: rgba(255, 217, 61, 0.1); color: var(--warning); }
-        .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-        /* Log Terminal */
-        .terminal {
-            background: #050508;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-        }
-        .terminal-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: rgba(255,255,255,0.02);
-            border-bottom: 1px solid var(--border);
-        }
-        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .terminal-dot.red { background: #ff5f57; }
-        .terminal-dot.yellow { background: #febc2e; }
-        .terminal-dot.green { background: #28c840; }
-        .terminal-title { font-size: 11px; color: var(--text-muted); margin-left: 8px; font-weight: 500; }
-        .terminal-body {
-            padding: 16px;
-            max-height: 380px;
-            overflow-y: auto;
-            font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
-            font-size: 12px;
-            line-height: 1.9;
-        }
-        .terminal-body::-webkit-scrollbar { width: 4px; }
-        .terminal-body::-webkit-scrollbar-track { background: transparent; }
-        .terminal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        .terminal-body p { color: var(--text-dim); }
-        .terminal-body p.success { color: var(--success); }
-        .terminal-body p.error { color: var(--error); }
-        .terminal-body p.info { color: var(--info); }
-        .terminal-body p.warn { color: var(--warning); }
-
-        /* Results */
-        .results-grid { display: flex; flex-direction: column; gap: 10px; }
-        .result-row {
-            display: grid;
-            grid-template-columns: 40px 1fr 80px 80px 140px;
-            align-items: center;
-            gap: 16px;
-            padding: 14px 18px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            transition: all 0.2s;
-        }
-        .result-row:hover {
-            border-color: var(--border-hover);
-            background: var(--bg-card-hover);
-        }
-        .result-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-        .result-icon.ok { background: var(--success-bg); }
-        .result-icon.fail { background: var(--error-bg); }
-        .result-title { font-size: 13px; font-weight: 600; color: #fff; }
-        .result-meta { font-size: 12px; color: var(--text-dim); font-weight: 500; }
-        .result-link {
-            font-size: 12px;
-            color: var(--accent-light);
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            transition: color 0.2s;
-        }
-        .result-link:hover { color: #fff; }
-        .result-error { font-size: 12px; color: var(--error); grid-column: 2 / -1; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .form-grid { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-            .result-row { grid-template-columns: 32px 1fr; gap: 8px; }
-            .result-meta, .result-link { grid-column: 2; }
-            .header { flex-direction: column; align-items: flex-start; gap: 12px; }
-        }
-    </style>
+    <title>AI Image Generator — Powered by Imagen 3.0</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <div class="logo">⚡</div>
-                <div>
-                    <h1>ShopLister AI</h1>
-                    <div class="tagline">Scrape → Generate → List — One Click</div>
-                </div>
+        <header class="header">
+            <div class="header__inner">
+                <h1 class="header__title">🎨 AI Image Generator</h1>
+                <p class="header__sub">Powered by Google Imagen 3.0</p>
             </div>
-            <div class="header-right">
-                <span class="pill pill-ai"><span class="pill-dot"></span> AI Powered</span>
-            </div>
-        </div>
+        </header>
 
-        <!-- Configuration -->
-        <div class="card" id="configCard">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon icon-config">⚙️</div>
-                    Configuration
+        <main class="main">
+            <div class="generator">
+                <!-- Prompt -->
+                <div class="generator__field">
+                    <label class="generator__label">Describe your image</label>
+                    <textarea id="prompt" class="generator__textarea" placeholder="A futuristic city at sunset with flying cars and neon lights..." rows="3"></textarea>
                 </div>
-            </div>
-            <div class="form-grid">
-                <div class="field full" style="position:relative">
-                    <label>Collection URL <span style="color:#888;font-weight:400;font-size:12px">— scrape a single collection</span></label>
-                    <input type="url" id="collectionUrl" placeholder="https://example.com/collections/safety-products">
-                </div>
-                <div class="field full" style="position:relative">
-                    <div style="text-align:center;padding:4px 0;color:#888;font-size:12px;font-weight:600;letter-spacing:2px">— OR —</div>
-                </div>
-                <div class="field full" style="position:relative">
-                    <label>🌐 Full Website URL <span style="color:#888;font-weight:400;font-size:12px">— scrape ALL products from entire site</span></label>
-                    <input type="url" id="siteUrl" placeholder="https://example.com" style="border:2px solid #6c5ce7;background:rgba(108,92,231,0.03)">
-                    <small style="color:#6c5ce7;margin-top:4px;display:block">Enter homepage URL or domain to scrape every product on the site</small>
-                </div>
-                <div class="field">
-                    <label>Shopify Store</label>
-                    <input type="text" id="store" placeholder="your-store.myshopify.com">
-                </div>
-                <div class="field">
-                    <label>Client ID</label>
-                    <input type="text" id="clientId" placeholder="Shopify API Client ID">
-                </div>
-                <div class="field">
-                    <label>Client Secret</label>
-                    <input type="password" id="clientSecret" placeholder="Shopify API Client Secret">
-                </div>
-                <div class="field">
-                    <div class="toggle-row">
-                        <div>
-                            <div class="toggle-label">🟣 Gemini Image Generation</div>
-                            <div class="toggle-sub">Uses Gemini 2.5 Flash — generates product images from reference photos</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" id="geminiImages" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                <!-- Options row -->
+                <div class="generator__options">
+                    <div class="generator__field generator__field--small">
+                        <label class="generator__label">Style</label>
+                        <select id="style" class="generator__select">
+                            <option value="realistic">📷 Realistic</option>
+                            <option value="artistic">🎨 Artistic</option>
+                            <option value="anime">🌸 Anime</option>
+                            <option value="3d">🎮 3D Render</option>
+                            <option value="watercolor">💧 Watercolor</option>
+                            <option value="sketch">✏️ Sketch</option>
+                            <option value="digital_art">🖥️ Digital Art</option>
+                            <option value="oil_painting">🖼️ Oil Painting</option>
+                        </select>
+                    </div>
+                    <div class="generator__field generator__field--small">
+                        <label class="generator__label">Aspect Ratio</label>
+                        <select id="aspect_ratio" class="generator__select">
+                            <option value="1:1">1:1 Square</option>
+                            <option value="16:9">16:9 Landscape</option>
+                            <option value="9:16">9:16 Portrait</option>
+                            <option value="4:3">4:3 Standard</option>
+                            <option value="3:4">3:4 Tall</option>
+                        </select>
+                    </div>
+                    <div class="generator__field generator__field--small">
+                        <label class="generator__label">Count</label>
+                        <select id="count" class="generator__select">
+                            <option value="1">1 Image</option>
+                            <option value="2">2 Images</option>
+                            <option value="4">4 Images</option>
+                        </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="btn-row">
-                <button class="btn btn-ghost" onclick="previewScrape()">🔍 Preview</button>
-                <button class="btn btn-primary" id="startBtn" onclick="startJob()">⚡ Start Listing</button>
-            </div>
-
-            <div class="preview-box" id="previewBox">
-                <div class="preview-count" id="previewCount"></div>
-                <div class="preview-list" id="previewList"></div>
-            </div>
-        </div>
-
-        <!-- Progress -->
-        <div class="card progress-section" id="progressCard">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon icon-progress">📊</div>
-                    Progress
-                </div>
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <button class="btn btn-stop" id="stopBtn" onclick="stopJob()" style="display:none;">🛑 Stop</button>
-                    <span class="badge badge-pending" id="statusBadge">
-                        <span class="badge-dot"></span>
-                        Pending
+                <!-- Generate button -->
+                <button id="generateBtn" class="generator__btn" onclick="generateImage()">
+                    <span class="generator__btn-text">✨ Generate Image</span>
+                    <span class="generator__btn-loading" style="display:none">
+                        <span class="spinner"></span> Generating...
                     </span>
-                </div>
+                </button>
             </div>
 
-            <div class="stats-grid">
-                <div class="stat-card stat-total">
-                    <div class="stat-value" id="statTotal">0</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-card stat-done">
-                    <div class="stat-value" id="statDone">0</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-card stat-failed">
-                    <div class="stat-value" id="statFailed">0</div>
-                    <div class="stat-label">Failed</div>
-                </div>
+            <!-- Results -->
+            <div id="results" class="results" style="display:none">
+                <h2 class="results__heading">Generated Images</h2>
+                <div id="resultsGrid" class="results__grid"></div>
             </div>
 
-            <div class="progress-pct" id="progressPct">0%</div>
-            <div class="progress-wrap">
-                <div class="progress-fill" id="progressBar"></div>
+            <!-- Error -->
+            <div id="error" class="error" style="display:none">
+                <p id="errorText"></p>
             </div>
+        </main>
 
-            <div class="terminal">
-                <div class="terminal-header">
-                    <span class="terminal-dot red"></span>
-                    <span class="terminal-dot yellow"></span>
-                    <span class="terminal-dot green"></span>
-                    <span class="terminal-title">Live Output</span>
-                </div>
-                <div class="terminal-body" id="logBox"></div>
-            </div>
-        </div>
-
-        <!-- Results -->
-        <div class="card progress-section" id="resultsCard">
-            <div class="card-header">
-                <div class="card-title">
-                    <div class="card-icon icon-results">✅</div>
-                    Results
-                </div>
-                <span class="badge badge-completed" id="resultCount">0 products</span>
-            </div>
-            <div class="results-grid" id="resultsBody"></div>
-        </div>
+        <footer class="footer">
+            <p>Built with Google Imagen 3.0 API • Express Matting Services Ltd.</p>
+        </footer>
     </div>
 
     <script>
-        let currentJobId = null;
-        let pollInterval = null;
-
-        window.addEventListener('load', async () => {
-            const saved = localStorage.getItem('shopify_config');
-            if (saved) {
-                const cfg = JSON.parse(saved);
-                document.getElementById('store').value = cfg.store || '';
-                document.getElementById('clientId').value = cfg.clientId || '';
-                document.getElementById('clientSecret').value = cfg.clientSecret || '';
+        async function generateImage() {
+            const prompt = document.getElementById('prompt').value.trim();
+            const style = document.getElementById('style').value;
+            const aspectRatio = document.getElementById('aspect_ratio').value;
+            const count = parseInt(document.getElementById('count').value);
+            
+            if (!prompt) {
+                showError('Please enter a prompt to generate an image.');
+                return;
             }
 
-            // Auto-reconnect to active jobs on page load
-            await reconnectActiveJob();
-        });
-
-        async function reconnectActiveJob() {
-            try {
-                // Check localStorage for last job ID
-                const savedJobId = localStorage.getItem('active_job_id');
-                
-                // Fetch all jobs from server
-                const resp = await fetch('/api/jobs');
-                const allJobs = await resp.json();
-                
-                // Find any running job (scraping, generating, uploading, pending)
-                const activeJob = allJobs.find(j => 
-                    ['pending', 'scraping', 'generating', 'uploading', 'running'].includes(j.status)
-                );
-                
-                // Or reconnect to saved job if it exists (even if completed, show results)
-                const targetJob = activeJob || (savedJobId ? allJobs.find(j => j.id === savedJobId) : null);
-                
-                if (targetJob) {
-                    currentJobId = targetJob.id;
-                    localStorage.setItem('active_job_id', currentJobId);
-                    
-                    // Show the progress UI
-                    document.getElementById('progressCard').classList.add('active');
-                    
-                    // Update UI with current state
-                    updateUI(targetJob);
-                    
-                    // If still running, start polling
-                    if (['pending', 'scraping', 'generating', 'uploading', 'running'].includes(targetJob.status)) {
-                        document.getElementById('startBtn').disabled = true;
-                        document.getElementById('stopBtn').style.display = 'inline-flex';
-                        pollInterval = setInterval(pollStatus, 2000);
-                    }
-                }
-            } catch(e) {
-                console.log('No active jobs to reconnect:', e);
-            }
-        }
-
-        function updateUI(data) {
-            document.getElementById('statTotal').textContent = data.products_total;
-            document.getElementById('statDone').textContent = data.products_done;
-            document.getElementById('statFailed').textContent = data.products_failed;
-
-            const pct = data.products_total ? Math.round(data.products_done / data.products_total * 100) : 0;
-            document.getElementById('progressBar').style.width = pct + '%';
-            document.getElementById('progressPct').textContent = pct + '%';
-
-            const badge = document.getElementById('statusBadge');
-            badge.innerHTML = `<span class="badge-dot"></span> ${data.status}`;
-            badge.className = 'badge badge-' + data.status;
-
-            const logBox = document.getElementById('logBox');
-            logBox.innerHTML = data.logs.map(l => {
-                let cls = '';
-                if (l.includes('✅')) cls = 'success';
-                else if (l.includes('❌') || l.includes('💥')) cls = 'error';
-                else if (l.includes('⚠️')) cls = 'warn';
-                else if (l.includes('🤖') || l.includes('🔍') || l.includes('📤') || l.includes('🎨') || l.includes('📷')) cls = 'info';
-                return `<p class="${cls}">${l}</p>`;
-            }).join('');
-            logBox.scrollTop = logBox.scrollHeight;
-
-            if (data.results && data.results.length > 0) {
-                document.getElementById('resultsCard').classList.add('active');
-                const successCount = data.results.filter(r => r.status === 'success').length;
-                document.getElementById('resultCount').textContent = `${successCount} products created`;
-
-                document.getElementById('resultsBody').innerHTML = data.results.map(r => {
-                    if (r.status === 'success') {
-                        return `<div class="result-row">
-                            <div class="result-icon ok">✅</div>
-                            <div class="result-title">${r.shopify_title}</div>
-                            <div class="result-meta">${r.variants} variants</div>
-                            <div class="result-meta">${r.images} images</div>
-                            <a class="result-link" href="${r.admin_url}" target="_blank">View in Shopify →</a>
-                        </div>`;
-                    } else {
-                        return `<div class="result-row">
-                            <div class="result-icon fail">❌</div>
-                            <div class="result-title">${r.source_title}</div>
-                            <div class="result-error">${r.error}</div>
-                        </div>`;
-                    }
-                }).join('');
-            }
-        }
-
-        function getImageProvider() {
-            if (document.getElementById('geminiImages').checked) return 'gemini';
-            return 'none';
-        }
-
-        function saveConfig() {
-            localStorage.setItem('shopify_config', JSON.stringify({
-                store: document.getElementById('store').value,
-                clientId: document.getElementById('clientId').value,
-                clientSecret: document.getElementById('clientSecret').value,
-            }));
-        }
-
-        async function previewScrape() {
-            const url = document.getElementById('collectionUrl').value.trim();
-            if (!url) return alert('Enter a collection URL first');
-
-            const box = document.getElementById('previewBox');
-            box.classList.add('active');
-            document.getElementById('previewCount').textContent = '🔍 Scanning...';
-            document.getElementById('previewList').innerHTML = '';
+            const btn = document.getElementById('generateBtn');
+            const btnText = btn.querySelector('.generator__btn-text');
+            const btnLoading = btn.querySelector('.generator__btn-loading');
+            
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            hideError();
 
             try {
-                const resp = await fetch('/api/scrape-preview', {
+                const response = await fetch('/generate', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({url})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, style, aspect_ratio: aspectRatio, count })
                 });
-                const data = await resp.json();
 
-                if (data.error) {
-                    document.getElementById('previewCount').textContent = '❌ ' + data.error;
-                    return;
-                }
+                const data = await response.json();
 
-                document.getElementById('previewCount').textContent = `Found ${data.product_count} products`;
-                let html = '';
-                data.products.forEach(p => { html += `<a href="${p}" target="_blank">${p}</a>`; });
-                if (data.product_count > 20) html += `<p style="color:var(--text-muted);font-size:11px;padding:6px 0;">...and ${data.product_count - 20} more</p>`;
-                document.getElementById('previewList').innerHTML = html;
-            } catch(e) {
-                document.getElementById('previewCount').textContent = '❌ Error: ' + e.message;
-            }
-        }
-
-        async function startJob() {
-            const collectionUrl = document.getElementById('collectionUrl').value.trim();
-            const siteUrl = document.getElementById('siteUrl').value.trim();
-            const store = document.getElementById('store').value.trim();
-            const clientId = document.getElementById('clientId').value.trim();
-            const clientSecret = document.getElementById('clientSecret').value.trim();
-            const imageProvider = getImageProvider();
-            const genImages = imageProvider !== 'none';
-
-            if (!collectionUrl && !siteUrl) return alert('Enter either a Collection URL or Full Website URL');
-            if (!store || !clientId || !clientSecret) return alert('Please fill in Shopify credentials');
-            if (collectionUrl && siteUrl) return alert('Use either Collection URL or Full Website URL, not both');
-
-            saveConfig();
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('progressCard').classList.add('active');
-
-            try {
-                const payload = {
-                    store,
-                    client_id: clientId, client_secret: clientSecret,
-                    generate_images: genImages,
-                    image_provider: imageProvider
-                };
-                if (siteUrl) {
-                    payload.site_url = siteUrl;
+                if (count > 1 && data.results) {
+                    showMultipleResults(data.results);
+                } else if (data.success && data.image_data) {
+                    showSingleResult(data.image_data, data.message);
                 } else {
-                    payload.collection_url = collectionUrl;
+                    showError(data.message || 'Failed to generate image.');
                 }
-
-                const resp = await fetch('/api/start', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                const data = await resp.json();
-
-                if (data.error) {
-                    alert(data.error);
-                    document.getElementById('startBtn').disabled = false;
-                    return;
-                }
-
-                currentJobId = data.job_id;
-                localStorage.setItem('active_job_id', currentJobId);
-                document.getElementById('stopBtn').style.display = 'inline-flex';
-                pollInterval = setInterval(pollStatus, 2000);
-            } catch(e) {
-                alert('Failed to start: ' + e.message);
-                document.getElementById('startBtn').disabled = false;
+            } catch (err) {
+                showError('Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
             }
         }
 
-        async function stopJob() {
-            if (!currentJobId) return;
-            try {
-                await fetch(`/api/stop/${currentJobId}`, { method: 'POST' });
-                document.getElementById('stopBtn').style.display = 'none';
-            } catch(e) {
-                console.error('Stop error:', e);
-            }
+        function showSingleResult(imageData, message) {
+            const grid = document.getElementById('resultsGrid');
+            const card = createImageCard(imageData, message);
+            grid.insertBefore(card, grid.firstChild);
+            document.getElementById('results').style.display = 'block';
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        async function pollStatus() {
-            if (!currentJobId) return;
-
-            try {
-                const resp = await fetch(`/api/status/${currentJobId}`);
-                const data = await resp.json();
-
-                updateUI(data);
-
-                if (data.status === 'completed' || data.status === 'error' || data.status === 'stopped') {
-                    clearInterval(pollInterval);
-                    localStorage.removeItem('active_job_id');
-                    document.getElementById('startBtn').disabled = false;
-                    document.getElementById('stopBtn').style.display = 'none';
+        function showMultipleResults(results) {
+            const grid = document.getElementById('resultsGrid');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'results__batch';
+            
+            results.forEach(r => {
+                if (r.success && r.image_data) {
+                    const card = createImageCard(r.image_data, r.message);
+                    wrapper.appendChild(card);
                 }
-            } catch(e) {
-                console.error('Poll error:', e);
+            });
+            
+            if (wrapper.children.length > 0) {
+                grid.insertBefore(wrapper, grid.firstChild);
+                document.getElementById('results').style.display = 'block';
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                showError('No images were generated. Try a different prompt.');
             }
         }
+
+        function createImageCard(imageData, message) {
+            const card = document.createElement('div');
+            card.className = 'results__card';
+            card.innerHTML = `
+                <div class="results__img-wrap">
+                    <img src="data:image/png;base64,${imageData}" alt="Generated image" class="results__img">
+                </div>
+                <div class="results__actions">
+                    <button class="results__action-btn" onclick="downloadImage(this)" title="Download">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download
+                    </button>
+                    <span class="results__badge">${message || 'Imagen 3.0'}</span>
+                </div>
+            `;
+            return card;
+        }
+
+        function downloadImage(btn) {
+            const img = btn.closest('.results__card').querySelector('img');
+            const a = document.createElement('a');
+            a.href = img.src;
+            a.download = 'generated-image-' + Date.now() + '.png';
+            a.click();
+        }
+
+        function showError(msg) {
+            document.getElementById('errorText').textContent = msg;
+            document.getElementById('error').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        // Allow Ctrl+Enter to generate
+        document.getElementById('prompt').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                generateImage();
+            }
+        });
     </script>
 </body>
 </html>

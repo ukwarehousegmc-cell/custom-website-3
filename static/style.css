@@ -1,0 +1,73 @@
+/* Reset */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+/* Base */
+body{font-family:'Inter',sans-serif;background:#0f0f14;color:#e2e8f0;min-height:100vh}
+a{color:#818cf8;text-decoration:none}
+
+/* App */
+.app{max-width:900px;margin:0 auto;padding:0 20px;min-height:100vh;display:flex;flex-direction:column}
+
+/* Header */
+.header{padding:48px 0 32px;text-align:center}
+.header__title{font-size:clamp(28px,5vw,42px);font-weight:800;background:linear-gradient(135deg,#818cf8,#c084fc,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header__sub{font-size:14px;color:#64748b;margin-top:6px;font-weight:500}
+
+/* Main */
+.main{flex:1}
+
+/* Generator */
+.generator{background:#1a1a24;border:1px solid #2a2a3a;border-radius:20px;padding:32px;margin-bottom:40px}
+.generator__field{margin-bottom:20px}
+.generator__label{display:block;font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.generator__textarea{width:100%;padding:16px;background:#12121a;border:1.5px solid #2a2a3a;border-radius:12px;color:#e2e8f0;font-size:15px;font-family:'Inter',sans-serif;resize:vertical;outline:none;transition:border-color .2s;line-height:1.6}
+.generator__textarea:focus{border-color:#818cf8;box-shadow:0 0 0 3px rgba(129,140,248,.15)}
+.generator__textarea::placeholder{color:#475569}
+
+/* Options */
+.generator__options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px}
+.generator__field--small{margin-bottom:0}
+.generator__select{width:100%;padding:12px 14px;background:#12121a;border:1.5px solid #2a2a3a;border-radius:10px;color:#e2e8f0;font-size:14px;font-family:'Inter',sans-serif;cursor:pointer;outline:none;appearance:auto;transition:border-color .2s}
+.generator__select:focus{border-color:#818cf8}
+
+/* Button */
+.generator__btn{width:100%;padding:16px;background:linear-gradient(135deg,#818cf8 0%,#6366f1 100%);color:#fff;font-size:16px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:all .25s;font-family:'Inter',sans-serif}
+.generator__btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.4)}
+.generator__btn:active{transform:translateY(0)}
+.generator__btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+.generator__btn-loading{display:inline-flex;align-items:center;gap:8px}
+
+/* Spinner */
+.spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Results */
+.results{margin-bottom:48px}
+.results__heading{font-size:22px;font-weight:700;margin-bottom:20px;color:#e2e8f0}
+.results__grid{display:flex;flex-direction:column;gap:20px}
+.results__batch{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.results__card{background:#1a1a24;border:1px solid #2a2a3a;border-radius:16px;overflow:hidden;transition:all .3s}
+.results__card:hover{border-color:#818cf8;box-shadow:0 12px 40px rgba(129,140,248,.1)}
+.results__img-wrap{overflow:hidden}
+.results__img{width:100%;display:block;transition:transform .3s}
+.results__card:hover .results__img{transform:scale(1.02)}
+.results__actions{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.results__action-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(129,140,248,.15);color:#818cf8;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.results__action-btn:hover{background:rgba(129,140,248,.25)}
+.results__badge{font-size:11px;color:#64748b;font-weight:500}
+
+/* Error */
+.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:16px 20px;margin-bottom:24px}
+.error p{color:#fca5a5;font-size:14px}
+
+/* Footer */
+.footer{padding:32px 0;text-align:center;border-top:1px solid #1e1e2e}
+.footer p{font-size:13px;color:#475569}
+
+/* Responsive */
+@media(max-width:640px){
+    .generator{padding:20px}
+    .generator__options{grid-template-columns:1fr}
+    .results__batch{grid-template-columns:1fr}
+    .header{padding:32px 0 24px}
+}
