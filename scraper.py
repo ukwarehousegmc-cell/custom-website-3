@@ -442,11 +442,31 @@ def scrape_product_page(url, session=None):
     bundle_options = []
     page_text = str(soup)
     
-    # Extract optionConfig JSON from Magento bundle products
-    option_match = re.search(r'"optionConfig"\s*:\s*(\{.*?"positions"\s*:\s*\[.*?\].*?\})', page_text)
-    if option_match:
+    # Extract optionConfig JSON from Magento bundle products using brace-counting
+    option_config = None
+    oc_start = page_text.find('"optionConfig":')
+    if oc_start == -1:
+        oc_start = page_text.find('"optionConfig" :')
+    if oc_start >= 0:
+        brace_start = page_text.find('{', oc_start)
+        if brace_start >= 0:
+            depth = 0
+            i = brace_start
+            while i < len(page_text):
+                if page_text[i] == '{':
+                    depth += 1
+                elif page_text[i] == '}':
+                    depth -= 1
+                if depth == 0:
+                    try:
+                        option_config = json.loads(page_text[brace_start:i+1])
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                    break
+                i += 1
+
+    if option_config:
         try:
-            option_config = json.loads(option_match.group(1))
             positions = option_config.get("positions", [])
             base_prices = option_config.get("prices", {})
             base_price = base_prices.get("finalPrice", {}).get("amount", 0)
@@ -496,7 +516,7 @@ def scrape_product_page(url, session=None):
                 data["base_price"] = float(base_price)
                 data["is_bundle"] = True
                 
-        except (json.JSONDecodeError, KeyError, ValueError):
+        except (KeyError, ValueError):
             pass
     
     # Full text
