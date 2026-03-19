@@ -491,22 +491,47 @@ def scrape_product_page(url, session=None):
                         "price_adjustment": float(price_amount),
                     })
                 
-                # Detect if this is a colour option (thumbnails with images)
-                is_colour = "colour" in title.lower() or "color" in title.lower()
+                # Detect option type by title
+                title_lower = title.lower()
+                is_colour = "colour" in title_lower or "color" in title_lower
+                is_grid = "grid" in title_lower  # Magento "Grid" prefix = image grid selector
                 
-                # Try to extract colour swatches/thumbnails
+                # Try to extract thumbnails/images for grid/colour options
                 colour_images = {}
+                if is_colour or is_grid:
+                    # Look for image thumbnails in li elements associated with this option
+                    option_container = soup.find(id=f"bundle-option-{pos}")
+                    if option_container:
+                        parent = option_container.parent
+                        if parent:
+                            for li in parent.find_all("li", id=re.compile(r"li-\d+")):
+                                li_id = li.get("id", "").replace("li-", "")
+                                img = li.find("img")
+                                if img and img.get("src"):
+                                    colour_images[li_id] = urljoin(url, img["src"])
+                    # Fallback: search globally
+                    if not colour_images:
+                        for li in soup.find_all("li", id=re.compile(r"li-\d+")):
+                            li_id = li.get("id", "").replace("li-", "")
+                            img = li.find("img")
+                            if img and img.get("src"):
+                                colour_images[li_id] = urljoin(url, img["src"])
+                
+                # Clean "Grid" prefix from title for display
+                display_title = re.sub(r'^Grid\s+', '', title).strip()
+                
+                # Determine type (colour takes priority over grid)
                 if is_colour:
-                    for li in soup.find_all("li", id=re.compile(r"li-\d+")):
-                        li_id = li.get("id", "").replace("li-", "")
-                        img = li.find("img")
-                        if img and img.get("src"):
-                            colour_images[li_id] = urljoin(url, img["src"])
+                    opt_type = "colour_swatch"
+                elif is_grid:
+                    opt_type = "image_grid"
+                else:
+                    opt_type = "dropdown"
                 
                 bundle_options.append({
-                    "title": title,
+                    "title": display_title,
                     "required": True,
-                    "type": "colour_swatch" if is_colour else "dropdown",
+                    "type": opt_type,
                     "items": option_items,
                     "colour_images": colour_images if colour_images else None,
                 })
