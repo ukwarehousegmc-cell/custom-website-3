@@ -166,15 +166,24 @@ FULL PAGE TEXT (for additional context):
     result = json.loads(response.choices[0].message.content)
     
     # Pass through bundle options if present (not AI-generated, scraped directly)
+    # Double all prices (base_price + every item's price_adjustment) for 2x markup
     if product_data.get("is_bundle") and product_data.get("bundle_options"):
-        result["bundle_options"] = product_data["bundle_options"]
-        result["base_price"] = product_data.get("base_price", 0)
+        import copy
+        bundle_opts = copy.deepcopy(product_data["bundle_options"])
+        for opt in bundle_opts:
+            for item in opt.get("items", []):
+                item["price_adjustment"] = round(item.get("price_adjustment", 0) * 2, 2)
+        result["bundle_options"] = bundle_opts
+        base_price = product_data.get("base_price", 0)
+        result["base_price"] = round(float(base_price) * 2, 2)
         result["is_bundle"] = True
-        # For bundle products, use single variant with base price
+        # For bundle products, use single variant with doubled base price
+        doubled_base = str(result["base_price"])
         if result.get("variants"):
             result["variants"] = [result["variants"][0]]
+            result["variants"][0]["price"] = doubled_base
         if not result.get("variants"):
-            result["variants"] = [{"option1": "Default", "price": str(product_data.get("base_price", "0.00"))}]
+            result["variants"] = [{"option1": "Default", "price": doubled_base}]
     
     return result
 
