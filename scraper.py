@@ -408,108 +408,236 @@ def scrape_product_page(url, session=None):
     data["breadcrumbs"] = breadcrumbs
     
     # ── Magento Bundle Options (custom properties) ──
+    # PRIMARY METHOD: Parse fieldset.fieldset-bundle-options HTML directly
+    # FALLBACK: optionConfig JSON (kept for sites without the fieldset)
     bundle_options = []
     page_text = str(soup)
-    
-    # Extract optionConfig JSON from Magento bundle products using brace-counting
-    option_config = None
-    oc_start = page_text.find('"optionConfig":')
-    if oc_start == -1:
-        oc_start = page_text.find('"optionConfig" :')
-    if oc_start >= 0:
-        brace_start = page_text.find('{', oc_start)
-        if brace_start >= 0:
-            depth = 0
-            i = brace_start
-            while i < len(page_text):
-                if page_text[i] == '{':
-                    depth += 1
-                elif page_text[i] == '}':
-                    depth -= 1
-                if depth == 0:
-                    try:
-                        option_config = json.loads(page_text[brace_start:i+1])
-                    except (json.JSONDecodeError, ValueError):
-                        pass
-                    break
-                i += 1
 
-    if option_config:
-        try:
-            positions = option_config.get("positions", [])
-            base_prices = option_config.get("prices", {})
-            base_price = base_prices.get("finalPrice", {}).get("amount", 0)
-            
-            for pos in positions:
-                opt_data = option_config.get("options", {}).get(str(pos), {})
-                if not opt_data:
+    fieldset_bo = soup.find(class_="fieldset-bundle-options")
+    if fieldset_bo:
+        # Find all bundle-option selects inside the fieldset
+        bo_selects = fieldset_bo.find_all("select", id=re.compile(r"bundle-option-\d+"))
+
+        # Extract base price from page (meta or price element)
+        base_price = 0
+        meta_bp = soup.find("meta", {"property": "product:price:amount"})
+        if meta_bp:
+            try:
+                base_price = float(meta_bp["content"])
+            except (ValueError, TypeError):
+                pass
+        if not base_price:
+            # Try optionConfig just for base price
+            oc_start = page_text.find('"optionConfig":')
+            if oc_start == -1:
+                oc_start = page_text.find('"optionConfig" :')
+            if oc_start >= 0:
+                bp_match = re.search(r'"finalPrice"\s*:\s*\{\s*"amount"\s*:\s*([\d.]+)', page_text[oc_start:oc_start+500])
+                if bp_match:
+                    base_price = float(bp_match.group(1))
+
+        for sel in bo_selects:
+            sel_id = sel.get("id", "")  # e.g. "bundle-option-33"
+            option_num = sel_id.replace("bundle-option-", "")
+
+            # Find the title: look for preceding h3, or parent's label
+            title = ""
+            # Method 1: find the parent .field container and look for h3 above the select
+            parent_field = sel.find_parent(class_="field")
+            if parent_field:
+                h3 = parent_field.find("h3")
+                if h3:
+                    title = h3.get_text(strip=True)
+            # Method 2: look for label with matching for attribute
+            if not title:
+                lbl = fieldset_bo.find("label", {"for": sel_id})
+                if lbl:
+                    title = lbl.get_text(strip=True)
+                    # Clean "more info" suffix
+                    title = re.sub(r'\s*more\s*info\s*$', '', title, flags=re.I).strip()
+            # Method 3: preceding h3 sibling
+            if not title:
+                prev = sel.find_previous("h3")
+                if prev:
+                    title = prev.get_text(strip=True)
+            if not title:
+                title = f"Option {option_num}"
+
+            # Parse select options
+            option_items = []
+            for opt_el in sel.find_all("option"):
+                val = opt_el.get("value", "")
+                if not val:  # skip "Choose a selection..."
                     continue
-                
-                title = opt_data.get("title", "")
-                selections = opt_data.get("selections", {})
-                
-                option_items = []
-                for sel_id, sel_data in selections.items():
-                    price_amount = sel_data.get("prices", {}).get("finalPrice", {}).get("amount", 0)
-                    if isinstance(price_amount, str):
-                        price_amount = float(price_amount) if price_amount else 0
-                    
-                    option_items.append({
-                        "id": sel_id,
-                        "name": sel_data.get("name", ""),
-                        "price_adjustment": float(price_amount),
-                    })
-                
-                # Detect option type by title
-                title_lower = title.lower()
-                is_colour = "colour" in title_lower or "color" in title_lower
-                is_grid = "grid" in title_lower
-                
-                # Try to extract thumbnails/images for grid/colour options
-                colour_images = {}
-                if is_colour or is_grid:
-                    option_container = soup.find(id=f"bundle-option-{pos}")
-                    if option_container:
-                        parent = option_container.parent
-                        if parent:
-                            for li in parent.find_all("li", id=re.compile(r"li-\d+")):
+                # Extract name from .product-name span or full text
+                name_span = opt_el.find(class_="product-name")
+                if name_span:
+                    name = name_span.get_text(strip=True)
+                else:
+                    name = opt_el.get_text(strip=True)
+                    # Clean price text from name
+                    name = re.sub(r'\+\s*£[\d,.]+.*$', '', name).strip()
+                    name = re.sub(r'£[\d,.]+', '', name).strip()
+
+                # Extract price from data-price-amount or text
+                price_adj = 0
+                price_el = opt_el.find(class_="price-including-tax")
+                if price_el:
+                    pa = price_el.get("data-price-amount", "0")
+                    try:
+                        price_adj = float(pa)
+                    except (ValueError, TypeError):
+                        pass
+                if not price_adj:
+                    # Fallback: parse from text like "+£154.80"
+                    price_match = re.search(r'\+\s*£([\d,.]+)', opt_el.get_text())
+                    if price_match:
+                        try:
+                            price_adj = float(price_match.group(1).replace(',', ''))
+                        except ValueError:
+                            pass
+
+                option_items.append({
+                    "id": val,
+                    "name": name,
+                    "price_adjustment": price_adj,
+                })
+
+            if not option_items:
+                continue
+
+            # Detect option type
+            title_lower = title.lower()
+            is_colour = "colour" in title_lower or "color" in title_lower
+            is_frame = "frame" in title_lower or "design" in title_lower or "style" in title_lower
+
+            # Extract images from associated UL grid (ul-{option_num})
+            colour_images = {}
+            ul_grid = fieldset_bo.find("ul", id=f"ul-{option_num}")
+            if ul_grid:
+                for li in ul_grid.find_all("li", id=re.compile(r"li-\d+")):
+                    li_id = li.get("id", "").replace("li-", "")
+                    img = li.find("img")
+                    if img and img.get("src"):
+                        colour_images[li_id] = urljoin(url, img["src"])
+
+            # Determine type
+            if is_colour:
+                opt_type = "colour_swatch"
+            elif is_frame or colour_images:
+                opt_type = "image_grid"
+            else:
+                opt_type = "dropdown"
+
+            bundle_options.append({
+                "title": title,
+                "required": True,
+                "type": opt_type,
+                "items": option_items,
+                "colour_images": colour_images if colour_images else None,
+            })
+
+        if bundle_options:
+            data["bundle_options"] = bundle_options
+            data["base_price"] = float(base_price)
+            data["is_bundle"] = True
+
+    # FALLBACK: optionConfig JSON (for sites without fieldset-bundle-options)
+    if not bundle_options:
+        option_config = None
+        oc_start = page_text.find('"optionConfig":')
+        if oc_start == -1:
+            oc_start = page_text.find('"optionConfig" :')
+        if oc_start >= 0:
+            brace_start = page_text.find('{', oc_start)
+            if brace_start >= 0:
+                depth = 0
+                i = brace_start
+                while i < len(page_text):
+                    if page_text[i] == '{':
+                        depth += 1
+                    elif page_text[i] == '}':
+                        depth -= 1
+                    if depth == 0:
+                        try:
+                            option_config = json.loads(page_text[brace_start:i+1])
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                        break
+                    i += 1
+
+        if option_config:
+            try:
+                positions = option_config.get("positions", [])
+                base_prices = option_config.get("prices", {})
+                base_price = base_prices.get("finalPrice", {}).get("amount", 0)
+
+                for pos in positions:
+                    opt_data = option_config.get("options", {}).get(str(pos), {})
+                    if not opt_data:
+                        continue
+
+                    title = opt_data.get("title", "")
+                    selections = opt_data.get("selections", {})
+
+                    option_items = []
+                    for sel_id, sel_data in selections.items():
+                        price_amount = sel_data.get("prices", {}).get("finalPrice", {}).get("amount", 0)
+                        if isinstance(price_amount, str):
+                            price_amount = float(price_amount) if price_amount else 0
+
+                        option_items.append({
+                            "id": sel_id,
+                            "name": sel_data.get("name", ""),
+                            "price_adjustment": float(price_amount),
+                        })
+
+                    title_lower = title.lower()
+                    is_colour = "colour" in title_lower or "color" in title_lower
+                    is_grid = "grid" in title_lower
+
+                    colour_images = {}
+                    if is_colour or is_grid:
+                        option_container = soup.find(id=f"bundle-option-{pos}")
+                        if option_container:
+                            parent = option_container.parent
+                            if parent:
+                                for li in parent.find_all("li", id=re.compile(r"li-\d+")):
+                                    li_id = li.get("id", "").replace("li-", "")
+                                    img = li.find("img")
+                                    if img and img.get("src"):
+                                        colour_images[li_id] = urljoin(url, img["src"])
+                        if not colour_images:
+                            for li in soup.find_all("li", id=re.compile(r"li-\d+")):
                                 li_id = li.get("id", "").replace("li-", "")
                                 img = li.find("img")
                                 if img and img.get("src"):
                                     colour_images[li_id] = urljoin(url, img["src"])
-                    if not colour_images:
-                        for li in soup.find_all("li", id=re.compile(r"li-\d+")):
-                            li_id = li.get("id", "").replace("li-", "")
-                            img = li.find("img")
-                            if img and img.get("src"):
-                                colour_images[li_id] = urljoin(url, img["src"])
-                
-                # Clean "Grid" prefix from title for display
-                display_title = re.sub(r'^Grid\s+', '', title).strip()
-                
-                # Determine type (colour takes priority over grid)
-                if is_colour:
-                    opt_type = "colour_swatch"
-                elif is_grid:
-                    opt_type = "image_grid"
-                else:
-                    opt_type = "dropdown"
-                
-                bundle_options.append({
-                    "title": display_title,
-                    "required": True,
-                    "type": opt_type,
-                    "items": option_items,
-                    "colour_images": colour_images if colour_images else None,
-                })
-            
-            if bundle_options:
-                data["bundle_options"] = bundle_options
-                data["base_price"] = float(base_price)
-                data["is_bundle"] = True
-                
-        except (KeyError, ValueError):
-            pass
+
+                    display_title = re.sub(r'^Grid\s+', '', title).strip()
+
+                    if is_colour:
+                        opt_type = "colour_swatch"
+                    elif is_grid:
+                        opt_type = "image_grid"
+                    else:
+                        opt_type = "dropdown"
+
+                    bundle_options.append({
+                        "title": display_title,
+                        "required": True,
+                        "type": opt_type,
+                        "items": option_items,
+                        "colour_images": colour_images if colour_images else None,
+                    })
+
+                if bundle_options:
+                    data["bundle_options"] = bundle_options
+                    data["base_price"] = float(base_price)
+                    data["is_bundle"] = True
+
+            except (KeyError, ValueError):
+                pass
     
     # Full text
     body = soup.find("body")
