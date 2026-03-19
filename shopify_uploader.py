@@ -479,7 +479,6 @@ class ShopifyUploader:
             return
         
         try:
-            # Check if definition already exists via GraphQL
             graphql_url = f"https://{self.store}/admin/api/2024-10/graphql.json"
             query = '''mutation($def: MetafieldDefinitionInput!) {
                 metafieldDefinitionCreate(definition: $def) {
@@ -497,7 +496,7 @@ class ShopifyUploader:
                     "access": {"storefront": "PUBLIC_READ"},
                 }
             }
-            resp = requests.post(
+            requests.post(
                 graphql_url,
                 headers=self._headers(),
                 json={"query": query, "variables": variables},

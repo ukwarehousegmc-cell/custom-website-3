@@ -184,94 +184,63 @@ def scrape_shopify_product(product_json, base_url, collection_name, website_name
 # ─── HTML scraping fallback ───
 
 def extract_product_links(soup, base_url):
-    """Extract product links ONLY from the main product grid/listing.
+    """Extract product links ONLY from the main collection grid.
+    Ignores recently viewed, recommended, related products sections."""
+    links = set()
     
-    Strategy:
-    1. First try WooCommerce li.product containers (most reliable)
-    2. Then try common product grid containers (ul.products, .product-list, etc.)
-    3. Then try Magento product-item containers
-    4. Fallback: scan all links but EXCLUDE header, nav, footer, sidebar, dropdowns
-    """
-    links = []
-    seen = set()
-
-    def add_link(href):
-        full = urljoin(base_url, href)
-        if full not in seen:
-            seen.add(full)
-            links.append(full)
-
-    # ── Strategy 1: WooCommerce li.product (most reliable) ──
-    woo_products = soup.select("ul.products li.product a[href]")
-    if not woo_products:
-        # Also try without ul.products wrapper
-        woo_products = soup.select("li.product a[href]")
-    
-    if woo_products:
-        for a in woo_products:
-            href = a["href"]
-            if any(p in href.lower() for p in ["/product/", "/products/", "/p/"]):
-                add_link(href)
-        if links:
-            return links
-
-    # ── Strategy 2: Common product grid containers ──
-    grid_selectors = [
-        ".products-grid a[href]",
-        ".product-list a[href]",
-        ".product-grid a[href]",
-        "[data-product] a[href]",
-        ".collection-products a[href]",
-    ]
-    for sel in grid_selectors:
-        grid_links = soup.select(sel)
-        for a in grid_links:
-            href = a["href"]
-            if any(p in href.lower() for p in ["/product/", "/products/", "/p/", "/-p-", "/item/"]):
-                add_link(href)
-        if links:
-            return links
-
-    # ── Strategy 3: Magento product-item containers ──
-    for container in soup.find_all(class_=lambda c: c and any("product-item" in x.lower() for x in (c if isinstance(c, list) else [c]))):
-        for a in container.find_all("a", href=True):
-            href = a["href"]
-            parsed_href = urlparse(urljoin(base_url, href))
-            if parsed_href.netloc == urlparse(base_url).netloc and parsed_href.path not in ['/', '']:
-                add_link(href)
-    if links:
-        return links
-
-    # ── Strategy 4: Fallback — scan all links but strip nav/header/footer/sidebar/dropdowns ──
-    # Remove sections that are NOT the main content
-    exclude_tags = re.compile(
-        r"header|nav|footer|sidebar|menu|dropdown|breadcrumb|recent|recommend|related|"
-        r"also.like|you.may|featured|trending|best.sell|popular|cross.sell|upsell|viewed|suggested",
+    # Sections to EXCLUDE
+    exclude_patterns = re.compile(
+        r"recent|recommend|related|also.like|you.may|featured|trending|best.sell|popular|cross.sell|upsell|viewed|suggested",
         re.I
     )
-
-    # Clone soup so we don't destroy the original
-    from copy import copy
-    work_soup = BeautifulSoup(str(soup), "lxml")
-
-    for el in work_soup.find_all(["header", "nav", "footer", "aside"]):
-        el.decompose()
-
-    for el in work_soup.find_all(["section", "div"], class_=True):
-        classes = " ".join(el.get("class") or [])
-        el_id = el.get("id") or ""
-        if exclude_tags.search(classes) or exclude_tags.search(el_id):
-            try:
-                el.decompose()
-            except Exception:
-                pass
-
-    for a in work_soup.find_all("a", href=True):
+    
+    # Remove excluded sections
+    sections_to_remove = []
+    for section in soup.find_all(["section", "div", "aside"]):
+        try:
+            classes = " ".join(section.get("class") or [])
+            section_id = section.get("id") or ""
+            heading = section.find(["h2", "h3", "h4"])
+            heading_text = heading.get_text(strip=True) if heading else ""
+            
+            if exclude_patterns.search(classes) or exclude_patterns.search(section_id) or exclude_patterns.search(heading_text):
+                sections_to_remove.append(section)
+        except Exception:
+            continue
+    
+    for section in sections_to_remove:
+        try:
+            section.decompose()
+        except Exception:
+            pass
+    
+    # Extract product links
+    for a in soup.find_all("a", href=True):
         href = a["href"]
+        full = urljoin(base_url, href)
+        
+        # Standard ecommerce URL patterns
         if any(p in href.lower() for p in ["/product/", "/products/", "/p/", "/-p-", "/item/"]):
-            add_link(href)
-
-    return links
+            links.add(full)
+            continue
+        
+        # Magento: links with product-related classes (product-item-photo, product-item-link)
+        classes = " ".join(a.get("class") or []).lower()
+        if "product" in classes and href and not href.startswith("#") and not href.startswith("javascript"):
+            parsed_href = urlparse(urljoin(base_url, href))
+            # Must be same domain and have a path
+            if parsed_href.netloc == urlparse(base_url).netloc and parsed_href.path not in ['/', '']:
+                links.add(full)
+                continue
+        
+        # Magento: product links inside product-item containers
+        parent = a.find_parent(class_=lambda c: c and any("product-item" in x.lower() for x in (c if isinstance(c, list) else [c])))
+        if parent and href and not href.startswith("#") and not href.startswith("javascript"):
+            parsed_href = urlparse(urljoin(base_url, href))
+            if parsed_href.netloc == urlparse(base_url).netloc and parsed_href.path not in ['/', '']:
+                links.add(full)
+    
+    return list(links)
 
 
 def find_next_page(soup, base_url):
@@ -494,12 +463,11 @@ def scrape_product_page(url, session=None):
                 # Detect option type by title
                 title_lower = title.lower()
                 is_colour = "colour" in title_lower or "color" in title_lower
-                is_grid = "grid" in title_lower  # Magento "Grid" prefix = image grid selector
+                is_grid = "grid" in title_lower
                 
                 # Try to extract thumbnails/images for grid/colour options
                 colour_images = {}
                 if is_colour or is_grid:
-                    # Look for image thumbnails in li elements associated with this option
                     option_container = soup.find(id=f"bundle-option-{pos}")
                     if option_container:
                         parent = option_container.parent
@@ -509,7 +477,6 @@ def scrape_product_page(url, session=None):
                                 img = li.find("img")
                                 if img and img.get("src"):
                                     colour_images[li_id] = urljoin(url, img["src"])
-                    # Fallback: search globally
                     if not colour_images:
                         for li in soup.find_all("li", id=re.compile(r"li-\d+")):
                             li_id = li.get("id", "").replace("li-", "")
